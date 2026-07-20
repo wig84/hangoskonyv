@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+
+# Tesztelés / lefedettség
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+
+# Projekt-specifikus generált tartalom
+cache/
+*.wav
+*.mp3
+!tests/fixtures/**/*.wav
+!tests/fixtures/**/*.mp3
+
+# Konfiguráció (helyi, felhasználó-specifikus felülírás)
+config/settings.local.toml
+
+# Adatbázis
+*.db
+*.sqlite3
+
+# TTS modellek (nagy bináris fájlok, ne kerüljenek verziókezelés alá)
+models/
+*.onnx
+*.pt
+
+# IDE / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Naplófájlok
+*.log

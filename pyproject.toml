@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hangoskonyv"
+version = "0.1.0"
+description = "Magyar nyelvű e-könyv felolvasó alkalmazás"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "Hangoskonyv projekt" }]
+
+dependencies = [
+    # 2. iteráció (EPUB parser): a container.xml/OPF/toc.ncx elemzést
+    # közvetlenül, `zipfile` + `lxml` segítségével végezzük (nem
+    # `ebooklib`-bel) — az indoklást lásd epub_parser.py végén.
+    "lxml>=5.0",
+    "beautifulsoup4>=4.12",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "mypy>=1.10",
+    "ruff>=0.5",
+]
+
+[project.scripts]
+hangoskonyv = "hangoskonyv.cli.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+mypy_path = "src"

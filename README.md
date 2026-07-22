@@ -12,7 +12,7 @@ legtermészetesebben olvassa fel a magyar nyelvű könyveket.
 - [x] **2. iteráció** – EPUB parser
 - [x] **3. iteráció** – Magyar nyelvi feldolgozás (nlp modul)
 - [x] **4. iteráció** – Piper TTS integráció
-- [ ] 5. iteráció – Audio cache és generátor
+- [x] **5. iteráció** – Audio cache és generátor
 - [ ] 6. iteráció – CLI belépési pont
 
 A GUI és a további formátumtámogatás (PDF, MOBI, TXT) csak a CLI

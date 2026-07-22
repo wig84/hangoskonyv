@@ -17,6 +17,12 @@ dependencies = [
     # `ebooklib`-bel) — az indoklást lásd epub_parser.py végén.
     "lxml>=5.0",
     "beautifulsoup4>=4.12",
+    # 4. iteráció (TTS): a piper-tts jelenlegi verziói (1.5.0+) a
+    # GPL-3.0 licencű OHF-Voice/piper1-gpl fork-ból származnak (az
+    # eredeti MIT licencű rhasspy/piper 2025 októberében archiválásra
+    # került). Ez nem sandbox-ban telepíthető (nincs hálózat), a
+    # kódot valós Piper nélkül, mock-olt teszteléssel ellenőriztük.
+    "piper-tts>=1.5.0",
 ]
 
 [project.optional-dependencies]

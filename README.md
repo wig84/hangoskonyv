@@ -11,7 +11,7 @@ legtermészetesebben olvassa fel a magyar nyelvű könyveket.
 - [x] **1. iteráció** – Core domain modell, exception hierarchia, logging
 - [x] **2. iteráció** – EPUB parser
 - [x] **3. iteráció** – Magyar nyelvi feldolgozás (nlp modul)
-- [ ] 4. iteráció – Piper TTS integráció
+- [x] **4. iteráció** – Piper TTS integráció
 - [ ] 5. iteráció – Audio cache és generátor
 - [ ] 6. iteráció – CLI belépési pont
 

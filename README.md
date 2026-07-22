@@ -46,7 +46,13 @@ tests/
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
+pre-commit install
 ```
+
+A `pre-commit install` regisztrálja a `.pre-commit-config.yaml`-ban
+leírt hook-okat: mostantól minden `git commit` előtt automatikusan
+lefut a teljes teszt-csomag, és a commit megszakad, ha bármelyik
+teszt elbukik.
 
 ## Tesztek futtatása
 

@@ -1,0 +1,47 @@
+# pre-commit konfiguráció.
+#
+# Telepítés (egyszer, a repo klónozása után):
+#   pip install pre-commit
+#   pre-commit install
+#
+# Ezután minden `git commit` előtt automatikusan lefut a lenti hook-lánc.
+# Ha bármelyik lépés sikertelen (pl. egy teszt elbukik), a commit
+# MEGSZAKAD — semmi nem kerül be a történetbe, amíg nem javítod.
+#
+# Kézi futtatás (staged fájlok nélkül is, az egész repóra):
+#   pre-commit run --all-files
+#
+# Egy adott hook kihagyása (VÉSZHELYZETI, ne szokásból használd):
+#   git commit --no-verify
+
+repos:
+  - repo: local
+    hooks:
+      - id: pytest
+        name: Tesztek futtatása (pytest)
+        entry: pytest
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      # A lenti két hook alapból ki van kapcsolva (lásd a `stages`
+      # helyett a hiányukat) — direkt nem blokkolnak commitot, amíg a
+      # kódbázis nagy részén nem futott még végig `ruff`/`mypy`, hogy
+      # ne akadjon el a munkafolyamat egy csomó előre nem várt
+      # figyelmeztetésen. Ha készen állsz rá, hogy ezek is
+      # kötelezőek legyenek, told fel őket a `pytest` hook mellé
+      # (vedd ki a kommentet), vagy szólj, és beállítom neked.
+
+      # - id: ruff
+      #   name: Kódstílus ellenőrzése (ruff)
+      #   entry: ruff check .
+      #   language: system
+      #   pass_filenames: false
+      #   always_run: true
+
+      # - id: mypy
+      #   name: Típusellenőrzés (mypy --strict)
+      #   entry: mypy src
+      #   language: system
+      #   pass_filenames: false
+      #   always_run: true

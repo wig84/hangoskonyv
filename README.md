@@ -6,17 +6,32 @@ legtermészetesebben olvassa fel a magyar nyelvű könyveket.
 
 ## Fejlesztési státusz
 
-**Fázis 1 – CLI MVP** (folyamatban)
+**Fázis 1 – CLI MVP** ✅ **kész**
 
 - [x] **1. iteráció** – Core domain modell, exception hierarchia, logging
 - [x] **2. iteráció** – EPUB parser
 - [x] **3. iteráció** – Magyar nyelvi feldolgozás (nlp modul)
 - [x] **4. iteráció** – Piper TTS integráció
 - [x] **5. iteráció** – Audio cache és generátor
-- [ ] 6. iteráció – CLI belépési pont
+- [x] **6. iteráció** – CLI belépési pont
 
-A GUI és a további formátumtámogatás (PDF, MOBI, TXT) csak a CLI
-pipeline stabilizálása után következik.
+A GUI és a további formátumtámogatás (PDF, MOBI, TXT) a következő fázisokban.
+
+## Használat
+
+```bash
+pip install -e ".[dev]"
+
+# Piper hangmodell letöltése (magyar hang, ha elérhető; a pontos
+# elnevezés a Piper hangkatalógusától függ, ellenőrizd a
+# python3 -m piper.download_voices --help kimenetét):
+python3 -m piper.download_voices hu_HU-imre-medium
+
+hangoskonyv convert konyv.epub --voice-model hu_HU-imre-medium.onnx -o ./hangok
+```
+
+Ismételt futtatáskor a változatlan fejezetek a gyorsítótárból
+(`./cache`) érkeznek, nem generálódnak újra.
 
 ## Projektstruktúra
 
@@ -34,7 +49,8 @@ src/hangoskonyv/
     config/          # Konfiguráció betöltés/mentés (TOML)
     plugins/         # Bővíthetőségi réteg
     gui/             # PySide6 felület (Fázis 3)
-    utils/           # Segédfunkciók (logging, hashing)
+    cli/             # Parancssori belépési pont (click alapú)
+    utils/           # Segédfunkciók (logging, hashing, fájlnév-tisztítás)
 tests/
     unit/            # pytest unit tesztek
     fixtures/        # Teszt EPUB fájlok

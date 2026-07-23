@@ -1,0 +1,139 @@
+"""A hangoskonyv parancssori (CLI) belépési pontja.
+
+Ez az iteráció köti össze a teljes eddig megépített láncot:
+
+    EPUB fájl
+        -> ParserFactory / EpubParser        (2. iteráció)
+        -> Preprocessor (nlp)                (3. iteráció)
+        -> TTSFactory / PiperTTS             (4. iteráció)
+        -> CacheManager / AudioGenerator     (5. iteráció)
+        -> fejezetenkénti hangfájlok a kimeneti könyvtárban
+
+A `click`-et választottuk CLI-keretrendszernek a `typer` helyett —
+az indoklást lásd a `pyproject.toml` megjegyzésében: a `typer`
+(és amire épül, a `rich`) nem volt telepíthető/tesztelhető ebben a
+fejlesztői sandboxban, a `click` viszont igen, és beépített
+progress bar-t ad külön függőség nélkül.
+"""
+
+from __future__ import annotations
+
+import logging
+import shutil
+from pathlib import Path
+
+import click
+
+from hangoskonyv.audio.cache_manager import CacheManager
+from hangoskonyv.audio.generator import AudioGenerator
+from hangoskonyv.core.exceptions import HangoskonyvError
+from hangoskonyv.nlp.preprocessor import Preprocessor
+from hangoskonyv.parsers.factory import ParserFactory
+from hangoskonyv.tts.base import VoiceSettings
+from hangoskonyv.tts.factory import TTSFactory
+from hangoskonyv.utils.filenames import sanitize_filename
+from hangoskonyv.utils.logging_config import configure_logging
+
+logger = logging.getLogger(__name__)
+
+
+@click.group()
+@click.version_option(package_name="hangoskonyv")
+def cli() -> None:
+    """hangoskonyv — magyar nyelvű e-könyv felolvasó, parancssori eszköz."""
+
+
+@cli.command()
+@click.argument("input_path", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.option(
+    "--output", "-o", "output_dir",
+    type=click.Path(file_okay=False, path_type=Path),
+    default=Path("./kimenet"), show_default=True,
+    help="A legenerált hangfájlok célkönyvtára.",
+)
+@click.option(
+    "--voice-model",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    required=True,
+    help="A TTS hangmodell fájl elérési útja (Pipernél egy .onnx fájl).",
+)
+@click.option("--engine", default="piper", show_default=True, help="A használandó TTS motor neve.")
+@click.option("--speed", type=float, default=1.0, show_default=True, help="Felolvasási sebesség szorzó.")
+@click.option("--volume", type=float, default=1.0, show_default=True, help="Hangerő szorzó.")
+@click.option(
+    "--speaker-id", type=int, default=None,
+    help="Beszélő azonosítója (több beszélős hangmodelleknél).",
+)
+@click.option(
+    "--cache-dir",
+    type=click.Path(file_okay=False, path_type=Path),
+    default=Path("./cache"), show_default=True,
+    help="A gyorsítótár könyvtára — ismételt futtatásnál a változatlan fejezeteket nem generálja újra.",
+)
+@click.option("--log-level", default="INFO", show_default=True, help="Naplózási szint.")
+@click.option(
+    "--log-file", type=click.Path(dir_okay=False, path_type=Path), default=None,
+    help="Ha meg van adva, a részletes (DEBUG szintű) napló ide is íródik.",
+)
+def convert(
+    input_path: Path,
+    output_dir: Path,
+    voice_model: Path,
+    engine: str,
+    speed: float,
+    volume: float,
+    speaker_id: int | None,
+    cache_dir: Path,
+    log_level: str,
+    log_file: Path | None,
+) -> None:
+    """A megadott e-könyvet (jelenleg: EPUB) fejezetenkénti hangfájlokká alakítja.
+
+    Példa:
+
+        hangoskonyv convert konyv.epub --voice-model hu_HU-voice.onnx -o ./hangok
+    """
+    configure_logging(level=log_level, log_file=log_file)
+
+    try:
+        click.echo(f"Feldolgozás: {input_path}")
+        parser = ParserFactory().get_parser(input_path)
+        book = parser.parse(input_path)
+        click.echo(f"'{book.title}' — {book.author} ({book.chapter_count} fejezet, {book.total_word_count} szó)")
+
+        click.echo("Nyelvi előfeldolgozás (mondatbontás, normalizálás)...")
+        Preprocessor().process_book(book)
+
+        tts_engine = TTSFactory().get_engine(engine)
+        voice = VoiceSettings(
+            voice_model_path=voice_model, speed=speed, volume=volume, speaker_id=speaker_id
+        )
+        cache_manager = CacheManager(cache_root=cache_dir)
+        generator = AudioGenerator(tts=tts_engine, cache_manager=cache_manager, voice=voice)
+
+        output_dir.mkdir(parents=True, exist_ok=True)
+        chapters = book.chapters_sorted()
+
+        with click.progressbar(
+            enumerate(chapters), length=len(chapters), label="Hanggenerálás", show_pos=True
+        ) as progress:
+            for index, chapter in progress:
+                cached_path = generator.generate_chapter(book, chapter)
+                final_name = f"{index + 1:02d}_{sanitize_filename(chapter.title)}{cached_path.suffix}"
+                shutil.copyfile(cached_path, output_dir / final_name)
+
+        click.secho(
+            f"Kész! {book.chapter_count} fejezet mentve ide: {output_dir}", fg="green"
+        )
+
+    except HangoskonyvError as exc:
+        click.secho(f"Hiba: {exc}", fg="red", err=True)
+        raise SystemExit(1) from exc
+
+
+def main() -> None:
+    cli()
+
+
+if __name__ == "__main__":
+    main()

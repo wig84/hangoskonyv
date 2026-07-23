@@ -20,6 +20,8 @@ coverage.xml
 
 # Projekt-specifikus generált tartalom
 cache/
+kimenet/
+*_hangfelvetel/
 *.wav
 *.mp3
 !tests/fixtures/**/*.wav

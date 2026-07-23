@@ -23,6 +23,12 @@ dependencies = [
     # került). Ez nem sandbox-ban telepíthető (nincs hálózat), a
     # kódot valós Piper nélkül, mock-olt teszteléssel ellenőriztük.
     "piper-tts>=1.5.0",
+    # 6. iteráció (CLI): a click-et választottuk a typer helyett, mert
+    # ez utóbbi (és a rich, amire épülne a progress bar) nem volt
+    # telepíthető/tesztelhető ebben a sandboxban (nincs hálózat). A
+    # click stdlib-hez közeli, letisztult API-t ad, beépített
+    # progress bar-ral (nem kell hozzá külön rich/tqdm függőség).
+    "click>=8.1",
 ]
 
 [project.optional-dependencies]

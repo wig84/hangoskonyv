@@ -144,12 +144,16 @@ class TestConvertCaching:
 
         runner.invoke(cli, args)
         first_run_calls = CountingFakeTTS.call_count
+        assert first_run_calls > 0  # ténylegesen történt szintézis az első futásnál
 
         runner.invoke(cli, args)
         second_run_calls = CountingFakeTTS.call_count
 
-        assert first_run_calls == 35
-        assert second_run_calls == 35  # nem nőtt
+        # A második futásnál semmi nem generálódik újra — a pontos hívásszám
+        # az AudioGenerator/ssml.fallback szegmentálási logikájának
+        # implementációs részlete (lásd test_audio_generator.py /
+        # test_ssml_fallback.py), itt csak a cache-viselkedés a lényeg.
+        assert second_run_calls == first_run_calls
 
 
 class TestConvertErrorHandling:

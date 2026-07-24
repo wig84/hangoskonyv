@@ -6,7 +6,8 @@ Ez az iteráció köti össze a teljes eddig megépített láncot:
         -> ParserFactory / EpubParser        (2. iteráció)
         -> Preprocessor (nlp)                (3. iteráció)
         -> TTSFactory / PiperTTS             (4. iteráció)
-        -> CacheManager / AudioGenerator     (5. iteráció)
+        -> CacheManager / AudioGenerator     (5. iteráció, majd
+           ssml.fallback szünet-finomhangolással bővítve)
         -> fejezetenkénti hangfájlok a kimeneti könyvtárban
 
 A `click`-et választottuk CLI-keretrendszernek a `typer` helyett —
@@ -70,6 +71,18 @@ def cli() -> None:
     default=Path("./cache"), show_default=True,
     help="A gyorsítótár könyvtára — ismételt futtatásnál a változatlan fejezeteket nem generálja újra.",
 )
+@click.option(
+    "--comma-pauses/--no-comma-pauses",
+    default=False,
+    show_default=True,
+    help=(
+        "Extra szünet vesszőknél is (nem csak mondatvégeken). Finomabb "
+        "szünet-vezérlés, de a mondaton belüli darabolás miatt jelentősen "
+        "több TTS-hívást igényel — hosszabb könyveknél ez a generálási "
+        "időt is érdemben megnövelheti. Próbáld ki előbb egy rövid "
+        "fejezeten, mielőtt egy egész könyvre bekapcsolod."
+    ),
+)
 @click.option("--log-level", default="INFO", show_default=True, help="Naplózási szint.")
 @click.option(
     "--log-file", type=click.Path(dir_okay=False, path_type=Path), default=None,
@@ -84,6 +97,7 @@ def convert(
     volume: float,
     speaker_id: int | None,
     cache_dir: Path,
+    comma_pauses: bool,
     log_level: str,
     log_file: Path | None,
 ) -> None:
@@ -109,7 +123,12 @@ def convert(
             voice_model_path=voice_model, speed=speed, volume=volume, speaker_id=speaker_id
         )
         cache_manager = CacheManager(cache_root=cache_dir)
-        generator = AudioGenerator(tts=tts_engine, cache_manager=cache_manager, voice=voice)
+        generator = AudioGenerator(
+            tts=tts_engine,
+            cache_manager=cache_manager,
+            voice=voice,
+            split_on_commas=comma_pauses,
+        )
 
         output_dir.mkdir(parents=True, exist_ok=True)
         chapters = book.chapters_sorted()

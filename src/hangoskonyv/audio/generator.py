@@ -1,9 +1,21 @@
-"""Fejezetenkénti hanggenerálás, gyorsítótárazással összekötve.
+"""Fejezetenkénti hanggenerálás, gyorsítótárazással és szünet-
+finomhangolással összekötve.
 
 Ez a modul köti össze a TTS réteget (`AbstractTTS`) a
-`CacheManager`-rel: minden fejezethez kiszámolja a cache-kulcsot, és
-csak akkor hívja meg a (viszonylag lassú, erőforrás-igényes) TTS
-szintézist, ha a gyorsítótárban még nincs érvényes bejegyzés hozzá.
+`CacheManager`-rel és a `ssml.fallback` szegmentálással: minden
+fejezetet mondat-/vessző-szintű darabokra bontunk (lásd
+`ssml.fallback.build_chapter_segments`), mindegyiket külön
+szintetizáljuk, majd a darabok közé a megfelelő hosszúságú csendet
+illesztve fűzzük össze egyetlen fejezetnyi hanggá. Ez teszi lehetővé,
+hogy a mondatvégi/vessző utáni szünetek pontosan szabályozhatók
+legyenek, függetlenül attól, mit "gondol" erről maga a TTS motor —
+és hogy a hármaspontot ne szó szerint olvassa fel a rendszer.
+
+Csak akkor hívunk TTS szintézist egy fejezethez, ha a gyorsítótárban
+még nincs érvényes bejegyzés hozzá (a cache-kulcs a szegmentálási
+logika verzióját is figyelembe veszi — lásd `_engine_name` —, tehát
+ha ez a logika változik, a régi cache automatikusan érvénytelenné
+válik anélkül, hogy kézzel törölni kellene).
 """
 
 from __future__ import annotations
@@ -12,9 +24,11 @@ import logging
 from collections.abc import Callable
 from pathlib import Path
 
+from hangoskonyv.audio.audio_utils import concatenate_audio_segments, generate_silence
 from hangoskonyv.audio.cache_manager import CacheManager
 from hangoskonyv.core.document import Book, Chapter
-from hangoskonyv.tts.base import AbstractTTS, VoiceSettings
+from hangoskonyv.ssml.fallback import build_chapter_segments
+from hangoskonyv.tts.base import AbstractTTS, AudioSegment, VoiceSettings
 
 logger = logging.getLogger(__name__)
 
@@ -26,28 +40,75 @@ A státusz egyike: "cache_hit" (a fejezet már gyorsítótárazva volt),
 akár cache-ből, akár frissen generálva).
 """
 
+_SEGMENTATION_VERSION = "segmented-v1"
+"""A szegmentálási/szünet-logika verziója. Ha ez a logika érdemben
+változik (pl. más szünet-hosszak, más darabolási szabály), ezt a
+stringet kell megváltoztatni — ez automatikusan érvényteleníti a
+korábbi gyorsítótár-bejegyzéseket, mert bekerül a cache-kulcsba."""
+
 
 class AudioGenerator:
     """Egy `Book` fejezeteihez generál (vagy cache-ből ad vissza) hangfájlokat."""
 
     def __init__(
-        self, tts: AbstractTTS, cache_manager: CacheManager, voice: VoiceSettings
+        self,
+        tts: AbstractTTS,
+        cache_manager: CacheManager,
+        voice: VoiceSettings,
+        *,
+        split_on_commas: bool = False,
     ) -> None:
+        """
+        Args:
+            tts: A használandó TTS motor.
+            cache_manager: A gyorsítótár-kezelő.
+            voice: A hang beállításai.
+            split_on_commas: Lásd `ssml.fallback.build_chapter_segments`
+                — finomabb szünet-vezérlés, de jelentősen több
+                TTS-hívás (egy hosszú könyvnél akár tízszeres
+                nagyságrendű generálási idő-növekedést is jelenthet).
+                Alapból False.
+        """
         self._tts = tts
         self._cache_manager = cache_manager
         self._voice = voice
+        self._split_on_commas = split_on_commas
 
     @property
     def _engine_name(self) -> str:
-        return type(self._tts).__name__
+        comma_suffix = "commas" if self._split_on_commas else "nocommas"
+        return f"{type(self._tts).__name__}:{_SEGMENTATION_VERSION}:{comma_suffix}"
+
+    def _synthesize_chapter(self, chapter: Chapter) -> AudioSegment:
+        """A fejezetet szegmensekre bontva, külön-külön szintetizálja,
+        majd a megfelelő szünetekkel összefűzi egyetlen hanggá."""
+        speech_segments = build_chapter_segments(chapter, split_on_commas=self._split_on_commas)
+        if not speech_segments:
+            raise ValueError(f"A fejezetnek nincs felolvasható szövege: {chapter.title!r}")
+
+        audio_pieces: list[AudioSegment] = []
+        for speech_segment in speech_segments:
+            audio = self._tts.synthesize(speech_segment.text, self._voice)
+            audio_pieces.append(audio)
+            if speech_segment.pause_after_ms > 0:
+                audio_pieces.append(
+                    generate_silence(
+                        speech_segment.pause_after_ms,
+                        sample_rate=audio.sample_rate,
+                        sample_width=audio.sample_width,
+                        channels=audio.channels,
+                    )
+                )
+
+        return concatenate_audio_segments(audio_pieces)
 
     def generate_chapter(self, book: Book, chapter: Chapter) -> Path:
         """Egy fejezethez tartozó hangfájl elérési útját adja vissza.
 
         Ha van érvényes gyorsítótár-bejegyzés (a fejezet szövege és a
         hang beállításai nem változtak), azt adja vissza TTS-hívás
-        nélkül. Egyébként meghívja a TTS motort, és a friss eredményt
-        gyorsítótárba menti.
+        nélkül. Egyébként szegmensenként szintetizál (lásd
+        `_synthesize_chapter`), és a friss eredményt gyorsítótárba menti.
         """
         cache_key = self._cache_manager.compute_cache_key(chapter, self._voice, self._engine_name)
         cached_path = self._cache_manager.get_cached_path(book, chapter, cache_key)
@@ -56,7 +117,7 @@ class AudioGenerator:
             return cached_path
 
         logger.info("Hanggenerálás: '%s' (%d szó)", chapter.title, chapter.word_count)
-        audio = self._tts.synthesize(chapter.text, self._voice)
+        audio = self._synthesize_chapter(chapter)
         return self._cache_manager.store(book, chapter, cache_key, audio)
 
     def generate_book(

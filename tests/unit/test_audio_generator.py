@@ -72,7 +72,84 @@ class TestGenerateChapter:
         assert fake_tts.synthesize_call_count == 2
 
 
-class TestGenerateBook:
+class TestSegmentedSynthesis:
+    def test_comma_sentence_produces_multiple_calls_when_enabled(
+        self, fake_tts, tmp_path: Path
+    ) -> None:
+        chapter = Chapter(
+            title="Fejezet",
+            paragraphs=[
+                Paragraph(
+                    sentences=[Sentence(raw_text="Bementem a boltba, vettem kenyeret, és hazamentem.")]
+                )
+            ],
+            order=0,
+        )
+        book = Book(title="Könyv", author="Szerző", chapters=[chapter], content_hash="h1")
+        cache = CacheManager(cache_root=tmp_path / "cache")
+        voice = VoiceSettings(voice_model_path=tmp_path / "hang.onnx")
+        generator = AudioGenerator(tts=fake_tts, cache_manager=cache, voice=voice, split_on_commas=True)
+
+        generator.generate_chapter(book, chapter)
+
+        assert fake_tts.synthesize_call_count == 3
+
+    def test_comma_sentence_produces_single_call_by_default(
+        self, fake_tts, tmp_path: Path
+    ) -> None:
+        chapter = Chapter(
+            title="Fejezet",
+            paragraphs=[
+                Paragraph(
+                    sentences=[Sentence(raw_text="Bementem a boltba, vettem kenyeret, és hazamentem.")]
+                )
+            ],
+            order=0,
+        )
+        book = Book(title="Könyv", author="Szerző", chapters=[chapter], content_hash="h1")
+        cache = CacheManager(cache_root=tmp_path / "cache")
+        voice = VoiceSettings(voice_model_path=tmp_path / "hang.onnx")
+        generator = AudioGenerator(tts=fake_tts, cache_manager=cache, voice=voice)
+
+        generator.generate_chapter(book, chapter)
+
+        assert fake_tts.synthesize_call_count == 1
+
+    def test_switching_split_on_commas_invalidates_cache(self, fake_tts, tmp_path: Path) -> None:
+        chapter = Chapter(
+            title="Fejezet",
+            paragraphs=[Paragraph(sentences=[Sentence(raw_text="Egy, kettő, három.")])],
+            order=0,
+        )
+        book = Book(title="Könyv", author="Szerző", chapters=[chapter], content_hash="h1")
+        cache = CacheManager(cache_root=tmp_path / "cache")
+        voice = VoiceSettings(voice_model_path=tmp_path / "hang.onnx")
+
+        generator_off = AudioGenerator(tts=fake_tts, cache_manager=cache, voice=voice)
+        generator_off.generate_chapter(book, chapter)
+        assert fake_tts.synthesize_call_count == 1
+
+        generator_on = AudioGenerator(
+            tts=fake_tts, cache_manager=cache, voice=voice, split_on_commas=True
+        )
+        generator_on.generate_chapter(book, chapter)
+        # Nem cache-találat, mert más a szegmentálási konfiguráció -> új hívások.
+        assert fake_tts.synthesize_call_count == 4  # 1 (előző) + 3 (új, vesszős)
+
+    def test_ellipsis_text_not_sent_to_tts(self, fake_tts, tmp_path: Path) -> None:
+        chapter = Chapter(
+            title="Fejezet",
+            paragraphs=[Paragraph(sentences=[Sentence(raw_text="Talán majd...")])],
+            order=0,
+        )
+        book = Book(title="Könyv", author="Szerző", chapters=[chapter], content_hash="h1")
+        cache = CacheManager(cache_root=tmp_path / "cache")
+        voice = VoiceSettings(voice_model_path=tmp_path / "hang.onnx")
+        generator = AudioGenerator(tts=fake_tts, cache_manager=cache, voice=voice)
+
+        generator.generate_chapter(book, chapter)
+
+        assert fake_tts.synthesized_texts == ["Talán majd"]
     def test_returns_path_for_every_chapter(self, fake_tts, tmp_path: Path) -> None:
         book = _book_with_chapters(3)
         generator = _generator(fake_tts, tmp_path)

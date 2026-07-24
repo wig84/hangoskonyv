@@ -33,6 +33,25 @@ hangoskonyv convert konyv.epub --voice-model hu_HU-imre-medium.onnx -o ./hangok
 Ismételt futtatáskor a változatlan fejezetek a gyorsítótárból
 (`./cache`) érkeznek, nem generálódnak újra.
 
+### Szünet-finomhangolás (SSML fallback)
+
+Mivel a Piper nem támogat SSML-t, a rendszer mondat-szinten
+szegmentálja a szöveget, és a darabok közé explicit csendet szúr be
+(lásd `ssml/fallback.py`). Ez orvosolja, hogy a hármaspontot ("...")
+a Piper szó szerint, "pont pont pont"-ként olvasná fel — helyette
+hosszabb szünet lesz a helyén —, és hogy mondatvégeken/kérdéseknél
+kicsit hosszabb, természetesebb szünet legyen.
+
+A `--comma-pauses` kapcsolóval a vesszőknél is extra szünet
+kérhető, de ez **jelentősen megnöveli a TTS-hívások számát**
+(egy átlagos regénynél nagyságrendekkel), ami a generálási időt is
+arányosan megnyújthatja. Érdemes előbb egy rövid fejezeten
+kipróbálni, mielőtt egy egész könyvre bekapcsolod:
+
+```bash
+hangoskonyv convert konyv.epub --voice-model hang.onnx -o ./teszt --comma-pauses
+```
+
 ## Projektstruktúra
 
 ```

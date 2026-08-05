@@ -14,8 +14,14 @@ legtermészetesebben olvassa fel a magyar nyelvű könyveket.
 - [x] **4. iteráció** – Piper TTS integráció
 - [x] **5. iteráció** – Audio cache és generátor
 - [x] **6. iteráció** – CLI belépési pont
+- [x] **7. iteráció** – SSML fallback (szünet-finomhangolás, hármaspont-javítás)
 
 A GUI és a további formátumtámogatás (PDF, MOBI, TXT) a következő fázisokban.
+
+**Fázis 3 – GUI és bővítés** (folyamatban)
+
+- [x] **8. iteráció** – SQLite perzisztencia réteg (könyvtár, könyvjelzők, lejátszási állapot)
+- [ ] 9. iteráció – PySide6 GUI
 
 ## Használat
 
@@ -64,7 +70,7 @@ src/hangoskonyv/
     ssml/            # SSML generálás / fallback szünet-időzítés
     tts/             # AbstractTTS és konkrét motorok (Piper, később XTTS, ElevenLabs)
     audio/           # Cache-elt hanggenerálás, lejátszó
-    persistence/      # SQLite + SQLAlchemy réteg (könyvjelzők, állapotmentés)
+    persistence/      # SQLite (stdlib sqlite3) réteg: könyvtár, könyvjelzők, állapotmentés
     config/          # Konfiguráció betöltés/mentés (TOML)
     plugins/         # Bővíthetőségi réteg
     gui/             # PySide6 felület (Fázis 3)

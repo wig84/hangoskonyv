@@ -220,3 +220,16 @@ class TestCliHelp:
     def test_top_level_help_exits_zero(self, runner: CliRunner) -> None:
         result = runner.invoke(cli, ["--help"])
         assert result.exit_code == 0
+
+
+class TestCliBanner:
+    def test_no_arguments_shows_banner(self, runner: CliRunner) -> None:
+        result = runner.invoke(cli, [])
+        assert result.exit_code == 0
+        assert "Gyors kezdés" in result.output
+        assert "convert konyv.epub" in result.output
+
+    def test_help_shows_reference_not_banner(self, runner: CliRunner) -> None:
+        result = runner.invoke(cli, ["--help"])
+        assert "convert" in result.output
+        assert "Gyors kezdés" not in result.output

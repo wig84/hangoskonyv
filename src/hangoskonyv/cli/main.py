@@ -27,6 +27,7 @@ import click
 
 from hangoskonyv.audio.cache_manager import CacheManager
 from hangoskonyv.audio.generator import AudioGenerator
+from hangoskonyv.cli.banner import render_banner
 from hangoskonyv.core.exceptions import HangoskonyvError
 from hangoskonyv.nlp.preprocessor import Preprocessor
 from hangoskonyv.parsers.factory import ParserFactory
@@ -38,10 +39,13 @@ from hangoskonyv.utils.logging_config import configure_logging
 logger = logging.getLogger(__name__)
 
 
-@click.group()
+@click.group(invoke_without_command=True)
 @click.version_option(package_name="hangoskonyv")
-def cli() -> None:
+@click.pass_context
+def cli(ctx: click.Context) -> None:
     """hangoskonyv — magyar nyelvű e-könyv felolvasó, parancssori eszköz."""
+    if ctx.invoked_subcommand is None:
+        click.echo(render_banner())
 
 
 @cli.command()

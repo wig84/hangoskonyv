@@ -15,13 +15,21 @@ legtermészetesebben olvassa fel a magyar nyelvű könyveket.
 - [x] **5. iteráció** – Audio cache és generátor
 - [x] **6. iteráció** – CLI belépési pont
 - [x] **7. iteráció** – SSML fallback (szünet-finomhangolás, hármaspont-javítás)
-
-A GUI és a további formátumtámogatás (PDF, MOBI, TXT) a következő fázisokban.
-
-**Fázis 3 – GUI és bővítés** (folyamatban)
-
 - [x] **8. iteráció** – SQLite perzisztencia réteg (könyvtár, könyvjelzők, lejátszási állapot)
-- [ ] 9. iteráció – PySide6 GUI
+
+**Fázis 2 – Természetesebb hangsúlyozás** (folyamatban; a projekt tudatosan
+**CLI-only** marad, nincs tervezett GUI)
+
+- [x] **9. iteráció** – CLI ASCII banner (paraméter nélküli indításkor gyors
+  áttekintés a legfontosabb kapcsolókról, példákkal)
+- [ ] 10. iteráció – Érzelem-/hangsúly-felismerés (`ai` modul) — a már meglévő,
+  eddig kihasználatlan `Sentence.emotion` mező tényleges feltöltése
+- [ ] 11. iteráció – A felismerés bekötése a szintézisbe (Piper
+  `noise_scale`/`noise_w_scale`/`length_scale` mondatonkénti finomhangolása)
+
+**Fázis 3+ – további bővítés** (később)
+
+- PDF/MOBI/TXT parserek, plugin rendszer, XTTS (hangklónozás), ElevenLabs
 
 ## Használat
 
@@ -73,7 +81,7 @@ src/hangoskonyv/
     persistence/      # SQLite (stdlib sqlite3) réteg: könyvtár, könyvjelzők, állapotmentés
     config/          # Konfiguráció betöltés/mentés (TOML)
     plugins/         # Bővíthetőségi réteg
-    gui/             # PySide6 felület (Fázis 3)
+    gui/             # NEM tervezett — a projekt tudatosan CLI-only marad
     cli/             # Parancssori belépési pont (click alapú)
     utils/           # Segédfunkciók (logging, hashing, fájlnév-tisztítás)
 tests/

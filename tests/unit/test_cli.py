@@ -129,6 +129,132 @@ class TestConvertSuccess:
         assert "Cixin Liu" in result.output
 
 
+class TestConvertSingleChapter:
+    def test_chapter_1_creates_only_one_file(
+        self, runner: CliRunner, fake_model: Path, tmp_path: Path
+    ) -> None:
+        output_dir = tmp_path / "kimenet"
+        result = runner.invoke(
+            cli,
+            [
+                "convert", str(FIXTURE_PATH),
+                "--output", str(output_dir),
+                "--voice-model", str(fake_model),
+                "--engine", "fake",
+                "--cache-dir", str(tmp_path / "cache"),
+                "--log-level", "WARNING",
+                "--chapter", "1",
+            ],
+        )
+
+        assert result.exit_code == 0
+        output_files = list(output_dir.iterdir())
+        assert len(output_files) == 1
+        assert output_files[0].name.startswith("01_")
+        assert "ELŐSZÓ" in output_files[0].name
+
+    def test_chapter_3_uses_correct_numbering(
+        self, runner: CliRunner, fake_model: Path, tmp_path: Path
+    ) -> None:
+        output_dir = tmp_path / "kimenet"
+        result = runner.invoke(
+            cli,
+            [
+                "convert", str(FIXTURE_PATH),
+                "--output", str(output_dir),
+                "--voice-model", str(fake_model),
+                "--engine", "fake",
+                "--cache-dir", str(tmp_path / "cache"),
+                "--log-level", "WARNING",
+                "--chapter", "3",
+            ],
+        )
+
+        assert result.exit_code == 0
+        output_files = list(output_dir.iterdir())
+        assert len(output_files) == 1
+        assert output_files[0].name.startswith("03_")
+
+    def test_out_of_range_chapter_fails_with_clear_message(
+        self, runner: CliRunner, fake_model: Path, tmp_path: Path
+    ) -> None:
+        result = runner.invoke(
+            cli,
+            [
+                "convert", str(FIXTURE_PATH),
+                "--output", str(tmp_path / "kimenet"),
+                "--voice-model", str(fake_model),
+                "--engine", "fake",
+                "--cache-dir", str(tmp_path / "cache"),
+                "--chapter", "999",
+            ],
+        )
+
+        assert result.exit_code != 0
+        assert "999" in result.output
+
+    def test_zero_chapter_fails(
+        self, runner: CliRunner, fake_model: Path, tmp_path: Path
+    ) -> None:
+        result = runner.invoke(
+            cli,
+            [
+                "convert", str(FIXTURE_PATH),
+                "--output", str(tmp_path / "kimenet"),
+                "--voice-model", str(fake_model),
+                "--engine", "fake",
+                "--cache-dir", str(tmp_path / "cache"),
+                "--chapter", "0",
+            ],
+        )
+
+        assert result.exit_code != 0
+
+    def test_full_book_still_gets_correct_numbering(
+        self, runner: CliRunner, fake_model: Path, tmp_path: Path
+    ) -> None:
+        """Regresszió: a --chapter bevezetése ne törje el a teljes
+        könyves futás fájlnév-számozását (chapter.order alapú, nem a
+        (potenciálisan szűrt) lista indexe alapú számozásra tértünk át)."""
+        output_dir = tmp_path / "kimenet"
+        result = runner.invoke(
+            cli,
+            [
+                "convert", str(FIXTURE_PATH),
+                "--output", str(output_dir),
+                "--voice-model", str(fake_model),
+                "--engine", "fake",
+                "--cache-dir", str(tmp_path / "cache"),
+                "--log-level", "WARNING",
+            ],
+        )
+        assert result.exit_code == 0
+        output_files = sorted(output_dir.iterdir())
+        assert len(output_files) == 35
+        assert output_files[0].name.startswith("01_")
+        assert output_files[-1].name.startswith("35_")
+
+
+class TestListChapters:
+    def test_lists_all_chapters_with_numbers(self, runner: CliRunner) -> None:
+        result = runner.invoke(cli, ["chapters", str(FIXTURE_PATH)])
+
+        assert result.exit_code == 0
+        assert "Gömbvillám" in result.output
+        assert "1. ELŐSZÓ" in result.output
+        assert "35." in result.output
+
+    def test_does_not_require_voice_model(self, runner: CliRunner) -> None:
+        # A `chapters` parancsnak nem kell TTS-t hívnia, tehát
+        # hangmodell nélkül is működnie kell.
+        result = runner.invoke(cli, ["chapters", str(FIXTURE_PATH)])
+        assert result.exit_code == 0
+
+    def test_nonexistent_file_fails(self, runner: CliRunner, tmp_path: Path) -> None:
+        result = runner.invoke(cli, ["chapters", str(tmp_path / "nincs.epub")])
+        assert result.exit_code != 0
+
+
 class TestConvertCaching:
     def test_second_run_does_not_resynthesize(
         self, runner: CliRunner, fake_model: Path, tmp_path: Path

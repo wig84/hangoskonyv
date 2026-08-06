@@ -47,6 +47,16 @@ hangoskonyv convert konyv.epub --voice-model hu_HU-imre-medium.onnx -o ./hangok
 Ismételt futtatáskor a változatlan fejezetek a gyorsítótárból
 (`./cache`) érkeznek, nem generálódnak újra.
 
+### Tesztelés egyetlen fejezeten
+
+Mielőtt egy egész könyvet legenerálnál (ami hosszú percekig/órákig is
+eltarthat), érdemes egyetlen fejezeten kipróbálni egy hangbeállítást:
+
+```bash
+hangoskonyv chapters konyv.epub                 # fejezetek listája, sorszámmal
+hangoskonyv convert konyv.epub --voice-model hang.onnx --chapter 3
+```
+
 ### Szünet-finomhangolás (SSML fallback)
 
 Mivel a Piper nem támogat SSML-t, a rendszer mondat-szinten

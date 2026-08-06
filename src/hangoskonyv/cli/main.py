@@ -87,6 +87,16 @@ def cli(ctx: click.Context) -> None:
         "fejezeten, mielőtt egy egész könyvre bekapcsolod."
     ),
 )
+@click.option(
+    "--chapter", "chapter_number", type=int, default=None,
+    help=(
+        "Ha meg van adva, csak ennyiedik fejezetet konvertálja (1-től "
+        "indexelve, a `hangoskonyv chapters` paranccsal listázott "
+        "sorszám szerint) — az egész könyv helyett. Hasznos gyors "
+        "teszteléshez egy hangbeállítás vagy szünet-finomhangolás "
+        "kipróbálásakor, mielőtt az egész könyvet legenerálnád."
+    ),
+)
 @click.option("--log-level", default="INFO", show_default=True, help="Naplózási szint.")
 @click.option(
     "--log-file", type=click.Path(dir_okay=False, path_type=Path), default=None,
@@ -102,6 +112,7 @@ def convert(
     speaker_id: int | None,
     cache_dir: Path,
     comma_pauses: bool,
+    chapter_number: int | None,
     log_level: str,
     log_file: Path | None,
 ) -> None:
@@ -110,6 +121,11 @@ def convert(
     Példa:
 
         hangoskonyv convert konyv.epub --voice-model hu_HU-voice.onnx -o ./hangok
+
+    Egyetlen fejezet teszteléshez:
+
+        hangoskonyv chapters konyv.epub
+        hangoskonyv convert konyv.epub --voice-model hu_HU-voice.onnx --chapter 3
     """
     configure_logging(level=log_level, log_file=log_file)
 
@@ -137,21 +153,60 @@ def convert(
         output_dir.mkdir(parents=True, exist_ok=True)
         chapters = book.chapters_sorted()
 
+        if chapter_number is not None:
+            if not (1 <= chapter_number <= len(chapters)):
+                raise click.BadParameter(
+                    f"Nincs {chapter_number}. fejezet — a könyvben {len(chapters)} "
+                    f"fejezet van (1–{len(chapters)}). A fejezetek listázásához: "
+                    f"hangoskonyv chapters {input_path}",
+                    param_hint="'--chapter'",
+                )
+            selected = chapters[chapter_number - 1]
+            chapters = [selected]
+            click.echo(f"Csak a(z) {chapter_number}. fejezet: '{selected.title}'")
+
         with click.progressbar(
-            enumerate(chapters), length=len(chapters), label="Hanggenerálás", show_pos=True
+            chapters, length=len(chapters), label="Hanggenerálás", show_pos=True
         ) as progress:
-            for index, chapter in progress:
+            for chapter in progress:
                 cached_path = generator.generate_chapter(book, chapter)
-                final_name = f"{index + 1:02d}_{sanitize_filename(chapter.title)}{cached_path.suffix}"
+                final_name = (
+                    f"{chapter.order + 1:02d}_{sanitize_filename(chapter.title)}"
+                    f"{cached_path.suffix}"
+                )
                 shutil.copyfile(cached_path, output_dir / final_name)
 
         click.secho(
-            f"Kész! {book.chapter_count} fejezet mentve ide: {output_dir}", fg="green"
+            f"Kész! {len(chapters)} fejezet mentve ide: {output_dir}", fg="green"
         )
 
     except HangoskonyvError as exc:
         click.secho(f"Hiba: {exc}", fg="red", err=True)
         raise SystemExit(1) from exc
+
+
+@cli.command(name="chapters")
+@click.argument("input_path", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+def list_chapters(input_path: Path) -> None:
+    """Kilistázza egy könyv fejezeteit (sorszám, cím, szószám) — TTS nélkül, gyorsan.
+
+    A sorszámok a `convert --chapter N` kapcsolóhoz igazodnak, tehát ha
+    csak egyetlen fejezetet szeretnél tesztelni, itt nézd meg, melyik
+    számot add meg.
+
+    Példa:
+
+        hangoskonyv chapters konyv.epub
+    """
+    try:
+        book = ParserFactory().get_parser(input_path).parse(input_path)
+    except HangoskonyvError as exc:
+        click.secho(f"Hiba: {exc}", fg="red", err=True)
+        raise SystemExit(1) from exc
+
+    click.echo(f"'{book.title}' — {book.author} ({book.chapter_count} fejezet)\n")
+    for chapter in book.chapters_sorted():
+        click.echo(f"  {chapter.order + 1:3d}. {chapter.title}  ({chapter.word_count} szó)")
 
 
 def main() -> None:

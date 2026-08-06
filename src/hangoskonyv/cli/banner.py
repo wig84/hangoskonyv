@@ -66,3 +66,44 @@ def render_banner() -> str:
         "",
     ]
     return _box(lines)
+
+
+def render_cheatsheet() -> str:
+    """Rejtett (nem dokumentált) puska: a leggyakrabban elfelejtett
+    git/teszt parancsok, egy helyen.
+
+    Elérése: `hangoskonyv --cheatsheet` — szándékosan nem jelenik meg
+    a `--help`-ben (ez egy személyes, kényelmi gyorsreferencia, nem a
+    hivatalos API része).
+    """
+    lines = [
+        "",
+        "  hangoskonyv — parancs-puska",
+        "",
+        "  Bundle behozása (a Claude-tól kapott .bundle fájlból):",
+        "    cd ~/Projects/hangoskonyv",
+        "    git pull <bundle_fájl_elérési_útja> main",
+        "",
+        "  Feltöltés GitHub-ra (kód + tag-ek):",
+        "    git push",
+        "    git push --tags",
+        "",
+        "  Saját változtatás mentése:",
+        "    git add -A",
+        "    git commit -m \"üzenet\"",
+        "",
+        "  Mit tartalmaz az utolsó commit:",
+        "    git log -1 -p",
+        "",
+        "  Tesztek futtatása:",
+        "    pytest tests/ -v",
+        "",
+        "  pre-commit hook telepítése (egyszer, klónozás után):",
+        "    pre-commit install",
+        "",
+        "  Fejezetek listázása / egy fejezet tesztelése:",
+        "    hangoskonyv chapters konyv.epub",
+        "    hangoskonyv convert konyv.epub --voice-model h.onnx --chapter 3",
+        "",
+    ]
+    return _box(lines)

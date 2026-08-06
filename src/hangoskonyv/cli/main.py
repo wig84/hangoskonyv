@@ -27,7 +27,7 @@ import click
 
 from hangoskonyv.audio.cache_manager import CacheManager
 from hangoskonyv.audio.generator import AudioGenerator
-from hangoskonyv.cli.banner import render_banner
+from hangoskonyv.cli.banner import render_banner, render_cheatsheet
 from hangoskonyv.core.exceptions import HangoskonyvError
 from hangoskonyv.nlp.preprocessor import Preprocessor
 from hangoskonyv.parsers.factory import ParserFactory
@@ -35,15 +35,20 @@ from hangoskonyv.tts.base import VoiceSettings
 from hangoskonyv.tts.factory import TTSFactory
 from hangoskonyv.utils.filenames import sanitize_filename
 from hangoskonyv.utils.logging_config import configure_logging
+from hangoskonyv.utils.mp3_export import convert_wav_to_mp3
 
 logger = logging.getLogger(__name__)
 
 
 @click.group(invoke_without_command=True)
 @click.version_option(package_name="hangoskonyv")
+@click.option("--cheatsheet", is_flag=True, hidden=True)
 @click.pass_context
-def cli(ctx: click.Context) -> None:
+def cli(ctx: click.Context, cheatsheet: bool) -> None:
     """hangoskonyv — magyar nyelvű e-könyv felolvasó, parancssori eszköz."""
+    if cheatsheet:
+        click.echo(render_cheatsheet())
+        ctx.exit()
     if ctx.invoked_subcommand is None:
         click.echo(render_banner())
 
@@ -97,6 +102,11 @@ def cli(ctx: click.Context) -> None:
         "kipróbálásakor, mielőtt az egész könyvet legenerálnád."
     ),
 )
+@click.option(
+    "--format", "output_format", type=click.Choice(["wav", "mp3"]), default="wav",
+    show_default=True,
+    help="A kimeneti fájlok formátuma. Az mp3-hoz az 'ffmpeg' szükséges a rendszeren.",
+)
 @click.option("--log-level", default="INFO", show_default=True, help="Naplózási szint.")
 @click.option(
     "--log-file", type=click.Path(dir_okay=False, path_type=Path), default=None,
@@ -113,6 +123,7 @@ def convert(
     cache_dir: Path,
     comma_pauses: bool,
     chapter_number: int | None,
+    output_format: str,
     log_level: str,
     log_file: Path | None,
 ) -> None:
@@ -170,11 +181,14 @@ def convert(
         ) as progress:
             for chapter in progress:
                 cached_path = generator.generate_chapter(book, chapter)
-                final_name = (
-                    f"{chapter.order + 1:02d}_{sanitize_filename(chapter.title)}"
-                    f"{cached_path.suffix}"
-                )
-                shutil.copyfile(cached_path, output_dir / final_name)
+                base_name = f"{chapter.order + 1:02d}_{sanitize_filename(chapter.title)}"
+                wav_path = output_dir / f"{base_name}{cached_path.suffix}"
+                shutil.copyfile(cached_path, wav_path)
+
+                if output_format == "mp3":
+                    mp3_path = output_dir / f"{base_name}.mp3"
+                    convert_wav_to_mp3(wav_path, mp3_path)
+                    wav_path.unlink()
 
         click.secho(
             f"Kész! {len(chapters)} fejezet mentve ide: {output_dir}", fg="green"

@@ -57,6 +57,16 @@ hangoskonyv chapters konyv.epub                 # fejezetek listája, sorszámma
 hangoskonyv convert konyv.epub --voice-model hang.onnx --chapter 3
 ```
 
+### MP3 export
+
+Alapból WAV-ot ad ki; MP3-hoz add meg a `--format mp3` kapcsolót
+(ehhez az `ffmpeg` parancssori eszköz szükséges a rendszeren —
+Ubuntu/Debianon: `sudo apt install ffmpeg`):
+
+```bash
+hangoskonyv convert konyv.epub --voice-model hang.onnx --format mp3
+```
+
 ### Szünet-finomhangolás (SSML fallback)
 
 Mivel a Piper nem támogat SSML-t, a rendszer mondat-szinten

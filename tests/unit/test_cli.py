@@ -255,6 +255,78 @@ class TestListChapters:
         assert result.exit_code != 0
 
 
+class TestConvertMp3Format:
+    def test_mp3_format_produces_mp3_file(
+        self, runner: CliRunner, fake_model: Path, tmp_path: Path
+    ) -> None:
+        output_dir = tmp_path / "kimenet"
+        result = runner.invoke(
+            cli,
+            [
+                "convert", str(FIXTURE_PATH),
+                "--output", str(output_dir),
+                "--voice-model", str(fake_model),
+                "--engine", "fake",
+                "--cache-dir", str(tmp_path / "cache"),
+                "--log-level", "WARNING",
+                "--chapter", "1",
+                "--format", "mp3",
+            ],
+        )
+
+        assert result.exit_code == 0
+        output_files = list(output_dir.iterdir())
+        assert len(output_files) == 1
+        assert output_files[0].suffix == ".mp3"
+
+    def test_default_format_is_wav(
+        self, runner: CliRunner, fake_model: Path, tmp_path: Path
+    ) -> None:
+        output_dir = tmp_path / "kimenet"
+        runner.invoke(
+            cli,
+            [
+                "convert", str(FIXTURE_PATH),
+                "--output", str(output_dir),
+                "--voice-model", str(fake_model),
+                "--engine", "fake",
+                "--cache-dir", str(tmp_path / "cache"),
+                "--log-level", "WARNING",
+                "--chapter", "1",
+            ],
+        )
+        output_files = list(output_dir.iterdir())
+        assert output_files[0].suffix == ".wav"
+
+    def test_invalid_format_rejected(
+        self, runner: CliRunner, fake_model: Path, tmp_path: Path
+    ) -> None:
+        result = runner.invoke(
+            cli,
+            [
+                "convert", str(FIXTURE_PATH),
+                "--output", str(tmp_path / "kimenet"),
+                "--voice-model", str(fake_model),
+                "--engine", "fake",
+                "--cache-dir", str(tmp_path / "cache"),
+                "--format", "flac",
+            ],
+        )
+        assert result.exit_code != 0
+
+
+class TestCliCheatsheet:
+    def test_cheatsheet_flag_shows_content(self, runner: CliRunner) -> None:
+        result = runner.invoke(cli, ["--cheatsheet"])
+        assert result.exit_code == 0
+        assert "git pull" in result.output
+        assert "pytest tests/ -v" in result.output
+
+    def test_cheatsheet_hidden_from_help(self, runner: CliRunner) -> None:
+        result = runner.invoke(cli, ["--help"])
+        assert "--cheatsheet" not in result.output
+
+
 class TestConvertCaching:
     def test_second_run_does_not_resynthesize(
         self, runner: CliRunner, fake_model: Path, tmp_path: Path

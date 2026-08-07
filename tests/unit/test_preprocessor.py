@@ -63,6 +63,27 @@ class TestPreprocessorOnSyntheticBook:
         result = Preprocessor().process_book(book)
         assert result is book
 
+    def test_emotion_field_is_populated(self) -> None:
+        paragraph = Paragraph(
+            sentences=[Sentence(raw_text="Nagyon dühös volt. Örömmel nézett rá.")]
+        )
+        chapter = Chapter(title="Teszt", paragraphs=[paragraph])
+        book = Book(title="Teszt könyv", author="Teszt szerző", chapters=[chapter])
+
+        Preprocessor().process_book(book)
+
+        assert paragraph.sentences[0].emotion == "harag"
+        assert paragraph.sentences[1].emotion == "öröm"
+
+    def test_neutral_sentence_has_none_emotion(self) -> None:
+        paragraph = Paragraph(sentences=[Sentence(raw_text="A ház az utca végén állt.")])
+        chapter = Chapter(title="Teszt", paragraphs=[paragraph])
+        book = Book(title="Teszt könyv", author="Teszt szerző", chapters=[chapter])
+
+        Preprocessor().process_book(book)
+
+        assert paragraph.sentences[0].emotion is None
+
 
 @pytest.fixture(scope="module")
 def processed_real_book():
@@ -99,6 +120,18 @@ class TestPreprocessorOnRealBook:
             if s.speaker
         }
         assert len(speakers) > 0
+
+    def test_multiple_emotion_categories_detected(self, processed_real_book) -> None:
+        emotions = {
+            s.emotion
+            for ch in processed_real_book.chapters
+            for p in ch.paragraphs
+            for s in p.sentences
+            if s.emotion
+        }
+        # Egy 35 fejezetes regényben elvárható, hogy legalább néhány
+        # különböző érzelmi kategória is előforduljon, ne csak egy.
+        assert len(emotions) >= 3
 
     def test_all_sentences_have_tokens(self, processed_real_book) -> None:
         for chapter in processed_real_book.chapters:

@@ -4,14 +4,16 @@ A parser (2. iteráció) minden bekezdést egyetlen, naiv `Sentence`-be
 tesz (a teljes bekezdés-szöveggel). A `Preprocessor` ezt dolgozza át:
 minden bekezdést valódi, magyar nyelvi szabályok szerint bontott
 mondatokra oszt, minden mondathoz típust (kérdés/felkiáltás/párbeszéd/
-idézet) és — párbeszéd esetén, ha felismerhető — beszélőt rendel,
-majd token-szintre bontja és normalizálja a szöveget.
+idézet), — párbeszéd esetén, ha felismerhető — beszélőt, és egy
+durva érzelmi címkét rendel (lásd `ai.emotion_analyzer`), majd
+token-szintre bontja és normalizálja a szöveget.
 """
 
 from __future__ import annotations
 
 import logging
 
+from hangoskonyv.ai.emotion_analyzer import detect_emotion
 from hangoskonyv.core.document import Book, Paragraph, Sentence
 from hangoskonyv.core.enums import SentenceType
 from hangoskonyv.nlp.dialogue_detector import detect_sentence_type, extract_speaker
@@ -57,14 +59,14 @@ class Preprocessor:
                 extract_speaker(sentence_text) if sentence_type == SentenceType.DIALOGUE else None
             )
             tokens = tokenize_and_normalize(sentence_text)
-            new_sentences.append(
-                Sentence(
-                    raw_text=sentence_text,
-                    type=sentence_type,
-                    speaker=speaker,
-                    tokens=tokens,
-                )
+            new_sentence = Sentence(
+                raw_text=sentence_text,
+                type=sentence_type,
+                speaker=speaker,
+                tokens=tokens,
             )
+            new_sentence.emotion = detect_emotion(new_sentence)
+            new_sentences.append(new_sentence)
 
         paragraph.sentences = new_sentences
         paragraph.is_dialogue_block = any(

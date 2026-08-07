@@ -22,8 +22,8 @@ legtermészetesebben olvassa fel a magyar nyelvű könyveket.
 
 - [x] **9. iteráció** – CLI ASCII banner (paraméter nélküli indításkor gyors
   áttekintés a legfontosabb kapcsolókról, példákkal)
-- [ ] 10. iteráció – Érzelem-/hangsúly-felismerés (`ai` modul) — a már meglévő,
-  eddig kihasználatlan `Sentence.emotion` mező tényleges feltöltése
+- [x] **10. iteráció** – Érzelem-/hangsúly-felismerés (`ai` modul) — a
+  `Sentence.emotion` mező feltöltése lexikai heurisztikával
 - [ ] 11. iteráció – A felismerés bekötése a szintézisbe (Piper
   `noise_scale`/`noise_w_scale`/`length_scale` mondatonkénti finomhangolása)
 
